@@ -125,6 +125,8 @@ class GoogleMapPlotter(object):
                             settings["edge_color"] or \
                             settings["face_color"]
 
+        settings["onclick"] = kwargs.get("onclick", None)
+
         # Need to replace "plum" with "#DDA0DD" and "c" with "#00FFFF" (cyan).
         for key, color in settings.items():
             if 'color' in key:
@@ -226,7 +228,7 @@ class GoogleMapPlotter(object):
         self.shapes.append((shape, settings))
 
     def draw(self, htmlfile):
-        """Create the html file which include one google map and all points and paths. If 
+        """Create the html file which include one google map and all points and paths. If
         no string is provided, return the raw html.
         """
         f = open(htmlfile, 'w')
@@ -242,8 +244,12 @@ class GoogleMapPlotter(object):
         else:
             f.write('<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?libraries=visualization&sensor=true_or_false"></script>\n' )
         f.write('<script type="text/javascript">\n')
+        f.write('\tfunction displayInfo(map, event, msg) { \n')
+        f.write('\t\tinfoWindow.setContent(msg); infoWindow.setPosition(event.latLng); infoWindow.open(map); console.info(msg);\n')
+        f.write('\t\t};\n')
         f.write('\tfunction initialize() {\n')
         self.write_map(f)
+        f.write('infoWindow = new google.maps.InfoWindow;\n')
         self.write_grids(f)
         self.write_points(f)
         self.write_paths(f)
@@ -392,7 +398,10 @@ class GoogleMapPlotter(object):
         f.write('\n\n')
 
     def write_polygon(self, f, path, settings):
-        clickable = False
+        if settings.get('onclick') == None:
+            clickable = False
+        else:
+            clickable = True
         geodesic = True
         strokeColor = settings.get('edge_color') or settings.get('color')
         strokeOpacity = settings.get('edge_alpha')
@@ -418,6 +427,8 @@ class GoogleMapPlotter(object):
         f.write('});\n')
         f.write('\n')
         f.write('polygon.setMap(map);\n')
+        if settings.get('onclick') != None:
+            f.write('polygon.addListener(\'click\', event => displayInfo(map, event, '+ json.dumps(settings.get('onclick')) +') );\n')
         f.write('\n\n')
 
     def write_heatmap(self, f):
